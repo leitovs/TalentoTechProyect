@@ -1,5 +1,6 @@
-# from langraph import Graph, node
 from typing import Dict, Optional
+from PIL import Image
+# from langraph import Graph, node
 # from openai import AzureOpenAI
 # from config import AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_DEPLOYMENT_NAME
 
@@ -105,9 +106,19 @@ class LangraphAgent:
             "message": analysis
         }
 
-    def get_response(self, user_input: str) -> str:
-        return "HOla es una prueba 2"
-        if all(value is not None for value in self.user_data.values()):
-            return self.predict_solar_roi(self.user_data)["message"]
-        else:
-            return self.collect_info(user_input)["response"]
+    def get_response(self, user_input: str = None, image: Image = None) -> str:
+        # Si hay una imagen, procesarla
+        if image:
+            # Aquí puedes agregar lógica para procesar la imagen
+            # Por ahora retornamos una respuesta genérica
+            return "He recibido tu imagen. Por favor, cuéntame más sobre tu proyecto de energía solar."
+        
+        return "Por favor, proporciona un mensaje o una imagen."
+        # Procesar entrada de texto normal
+        if user_input:
+            if all(value is not None for value in self.user_data.values()):
+                return self.predict_solar_roi(self.user_data)["message"]
+            else:
+                return self.collect_info(user_input)["response"]
+        
+        
