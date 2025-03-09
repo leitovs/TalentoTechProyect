@@ -14,7 +14,7 @@ st.title("Consultor de Energía Solar")
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         if isinstance(message["content"], dict) and message["content"]["type"] == "image":
-            st.image(message["content"]["data"], caption="Imagen subida", use_column_width=True)
+            st.image(message["content"]["data"], caption="Imagen subida", use_container_width=True)
         else:
             st.write(message["content"])
 
@@ -35,7 +35,7 @@ uploaded_file = st.file_uploader(
 if uploaded_file:
     image = Image.open(uploaded_file)
     with st.chat_message("user"):
-        st.image(image, caption="Imagen subida", use_column_width=True)
+        st.image(image, caption="Imagen subida", use_container_width=True)
     response = st.session_state.agent.get_response(image=image)
     st.session_state.messages.append({"role": "user", "content": {"type": "image", "data": image}})
     with st.chat_message("assistant"):
