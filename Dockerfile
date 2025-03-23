@@ -1,5 +1,5 @@
 # Usar una imagen base de Python
-FROM python:3.12-slim-bookworm
+FROM public.ecr.aws/docker/library/python:3.13.2-slim-bookworm
 
 # Establecer el directorio de trabajo
 WORKDIR /app
