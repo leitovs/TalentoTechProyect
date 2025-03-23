@@ -10,7 +10,7 @@ if 'agent' not in st.session_state:
     st.session_state.agent = LangraphAgent(cc="123456")
     st.session_state.messages = []
 
-st.title("Consultor de Energía Solar")
+st.title("Consultor de Energía Solar 1")
 
 # Mostrar historial de mensajes
 for message in st.session_state.messages:
