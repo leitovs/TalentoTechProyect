@@ -2,10 +2,12 @@ import streamlit as st
 from langraph_agent import LangraphAgent
 import io
 from PIL import Image
+from dotenv import load_dotenv
+load_dotenv(override=True)
 
 # Inicializar el agente si no existe
 if 'agent' not in st.session_state:
-    st.session_state.agent = LangraphAgent()
+    st.session_state.agent = LangraphAgent(cc="123456")
     st.session_state.messages = []
 
 st.title("Consultor de Energía Solar")
