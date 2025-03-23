@@ -1,110 +1,96 @@
 from typing import Dict, Optional
 from PIL import Image
-# from langraph import Graph, node
-# from openai import AzureOpenAI
-# from config import AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_DEPLOYMENT_NAME
+from langchain_openai import AzureChatOpenAI
+from pydantic import BaseModel, Field
+from langchain_core.tools import tool
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent
+import logging
 
 class LangraphAgent:
-    def __init__(self):
-        self.user_data = {
-            "location": None,
-            "budget": None,
-            "space": None,
-            "consumption": None,
-            "cost_per_kw": None
-        }
-        self.current_question = 0
-        self.questions = [
-            "¿Cuál es tu ubicación específica (dirección, ciudad, departamento)?",
-            "¿Cuál es tu presupuesto aproximado para el proyecto solar?",
-            "¿Cuánto espacio tienes disponible para el proyecto (en metros cuadrados)?",
-            "¿Cuál es tu consumo mensual de energía en kWh?",
-            "¿Cuál es el costo por kilowatt en tu región?"
-        ]
-        
-        # Inicializar cliente de Azure OpenAI
-        # self.client = AzureOpenAI(
-        #     azure_endpoint=AZURE_OPENAI_ENDPOINT,
-        #     api_key=AZURE_OPENAI_KEY,
-        #     api_version="2023-12-01-preview"
-        # )
+    def __init__(self, cc: int):
+        self.cc = cc  # Placeholder for the conversation context
 
-        # Prompt template para el asistente
-        self.system_prompt = """Eres un experto consultor en energía solar. Tu tarea es ayudar a recopilar 
-        información importante y proporcionar análisis detallados sobre proyectos solares. Mantén un tono 
-        profesional pero amigable, y asegúrate de validar que la información proporcionada sea razonable."""
+        llm = AzureChatOpenAI(model="gpt-4o-mini", temperature=0, api_version="2025-01-01-preview")
 
-    def get_llm_response(self, user_input: str, context: str) -> str:
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "assistant", "content": context},
-            {"role": "user", "content": user_input}
-        ]
-        
-        response = self.client.chat.completions.create(
-            model=AZURE_DEPLOYMENT_NAME,
-            messages=messages,
-            temperature=0.7,
-            max_tokens=150
-        )
-        
-        return response.choices[0].message.content
+        class ImageExtractionInput(BaseModel):
+            image_path: str = Field(description="Ruta o URL de la imagen del recibo energético del usuario")
+            
+        class InstallationEstimateInput(BaseModel):
+            location: str = Field(description="Ubicación donde se instalarán los paneles (ciudad/región)")
+            roof_area: float = Field(description="Área disponible en el techo en metros cuadrados")
+            monthly_consumption: float = Field(description="Consumo mensual promedio en kWh")
+            budget: float = Field(description="Presupuesto disponible para la instalación en pesos")
 
-    # @node
-    def collect_info(self, user_input: str) -> Dict:
-        if self.current_question >= len(self.questions):
-            return self.predict_solar_roi(self.user_data)
-        
-        # Validar y procesar la entrada del usuario con GPT-4
-        context = f"El usuario está respondiendo: {self.questions[self.current_question]}\nRespuesta: {user_input}"
-        validation = self.get_llm_response(user_input, context)
-        
-        # Procesar la respuesta como antes
-        if self.current_question == 0:
-            self.user_data["location"] = user_input
-        elif self.current_question == 1:
-            try:
-                self.user_data["budget"] = float(user_input.replace(',', '').replace('$', ''))
-            except ValueError:
-                return {"response": "Por favor, ingresa un número válido para el presupuesto."}
-        elif self.current_question == 2:
-            self.user_data["space"] = float(user_input)
-        elif self.current_question == 3:
-            self.user_data["consumption"] = float(user_input)
-        elif self.current_question == 4:
-            self.user_data["cost_per_kw"] = float(user_input)
+        @tool("extract_energy_consumption", args_schema=ImageExtractionInput)
+        def extract_energy_consumption(image_path: str) -> str:
+            """
+            Extrae datos de consumo energético de una imagen de recibo.
+            
+            Parámetros:
+            - image_path: Ruta o URL de la imagen del recibo energético
+            
+            Retorna:
+            - Un objeto con los datos extraídos del consumo energético incluyendo kWh mensuales y dirección
+            """
+            # Implementation placeholder
+            return "He procesado la imagen y extraído: consumo mensual de 350 kWh, dirección: Av. Principal 123, tarifa: $0.18/kWh"
 
-        next_question = self.questions[self.current_question]
-        self.current_question += 1
-        return {"response": f"{validation}\n\n{next_question}"}
+        @tool("estimate_installation_cost", args_schema=InstallationEstimateInput)
+        def estimate_installation_cost(location: str, roof_area: float, monthly_consumption: float, budget: float) -> str:
+            """
+            Calcula el costo estimado y ROI de una instalación de paneles solares.
+            
+            Parámetros:
+            - location: Ubicación donde se instalarán los paneles
+            - roof_area: Área disponible en metros cuadrados
+            - monthly_consumption: Consumo mensual promedio en kWh
+            - budget: Presupuesto disponible para la instalación
+            
+            Retorna:
+            - Detalles sobre la instalación recomendada, costo estimado, ROI y tiempo de amortización
+            """
+            # Implementation placeholder
+            return f"Para una instalación en {location} con {roof_area}m² y consumo de {monthly_consumption}kWh:\n- Costo estimado: ${budget * 0.8}\n- ROI: 15%\n- Amortización: 6 años\n- Capacidad: 4.5kW (12 paneles)"
 
-    # @node
-    def predict_solar_roi(self, data: Dict) -> Dict:
-        # Crear un prompt para el análisis
-        analysis_prompt = f"""
-        Analiza el siguiente proyecto solar:
-        - Ubicación: {data['location']}
-        - Presupuesto: ${data['budget']}
-        - Espacio disponible: {data['space']} m²
-        - Consumo mensual: {data['consumption']} kWh
-        - Costo por kW: ${data['cost_per_kw']}
-        
-        Proporciona un análisis detallado del ROI y recomendaciones.
+        tools = [extract_energy_consumption, estimate_installation_cost]
+
+        # # # Define the prompt template for the agent
+        prefix = """
+        # Consultor Especializado en Energía Solar
+
+        Eres un consultor especializado en instalaciones de paneles solares. Tu objetivo es brindar al usuario información precisa sobre:
+        1. Análisis de su consumo energético actual
+        2. Recomendaciones personalizadas para instalación de paneles solares
+        3. Estimación de costos, retorno de inversión (ROI) y amortización
+
+        ## Flujo de conversación:
+        1. Saluda y explica brevemente cómo puedes ayudar
+        2. Solicita la imagen del recibo de energía del usuario
+        3. Utiliza la herramienta "extract_energy_consumption" para analizar la imagen
+        4. Pregunta información adicional necesaria:
+        - Ubicación específica (ciudad/región)
+        - Área disponible en el techo (metros cuadrados)
+        - Presupuesto aproximado
+        5. Utiliza la herramienta "estimate_installation_cost" con todos los datos recopilados
+        6. Presenta los resultados de manera clara y responde cualquier duda adicional
+
+        ## Notas importantes:
+        - Mantén un tono profesional pero amigable
+        - Si faltan datos, solicítalos amablemente al usuario
+        - Explica los términos técnicos de manera accesible
+        - Proporciona siempre recomendaciones basadas en los datos reales del usuario
+        - Si no puedes determinar con precisión algún dato, menciona los rangos posibles
         """
-        
-        analysis = self.get_llm_response(analysis_prompt, "")
-        
-        # Cálculos básicos como antes
-        estimated_production = data["space"] * 0.15
-        annual_savings = estimated_production * data["cost_per_kw"] * 12
-        simple_roi = (data["budget"] / annual_savings) * 100
-        
-        return {
-            "estimated_production": estimated_production,
-            "annual_savings": annual_savings,
-            "roi_years": simple_roi,
-            "message": analysis
-        }
+
+        memory = MemorySaver()
+
+        self.agent = create_react_agent(
+            llm,
+            tools=tools,
+            checkpointer=memory,
+            prompt=prefix,
+        )
 
     def get_response(self, user_input: str = None, image: Image = None) -> str:
         # Si hay una imagen, procesarla
@@ -113,12 +99,9 @@ class LangraphAgent:
             # Por ahora retornamos una respuesta genérica
             return "He recibido tu imagen. Por favor, cuéntame más sobre tu proyecto de energía solar."
         
-        return "Por favor, proporciona un mensaje o una imagen."
+        # return "Por favor, proporciona un mensaje o una imagen."
         # Procesar entrada de texto normal
         if user_input:
-            if all(value is not None for value in self.user_data.values()):
-                return self.predict_solar_roi(self.user_data)["message"]
-            else:
-                return self.collect_info(user_input)["response"]
-        
-        
+            answer = self.agent.invoke({"messages": [{"role": "user", "content": user_input}]}, config={"configurable": {"thread_id": self.cc}}, stream_mode = "values")["messages"][-1].content
+            logging.info(f"Respuesta del agente: {answer}")
+            return answer
