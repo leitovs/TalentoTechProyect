@@ -33,6 +33,11 @@ class LangraphAgent:
             Retorna:
             - Un objeto con los datos extraídos del consumo energético incluyendo kWh mensuales y dirección
             """
+
+            
+            print("hola, estoy en extract_energy_consumption")
+            print("se debe implementar el contenido de la tool ****************")   
+            
             # Implementation placeholder
             return "He procesado la imagen y extraído: consumo mensual de 350 kWh, dirección: Av. Principal 123, tarifa: $0.18/kWh"
 
@@ -92,12 +97,12 @@ class LangraphAgent:
             prompt=prefix,
         )
 
-    def get_response(self, user_input: str = None, image: Image = None) -> str:
+    def get_response(self, user_input: str = None, file_bytes: bytes = None) -> str:
         # Si hay una imagen, procesarla
-        if image:
+        if file_bytes:
             # Aquí puedes agregar lógica para procesar la imagen
             # Por ahora retornamos una respuesta genérica
-            return "He recibido tu imagen. Por favor, cuéntame más sobre tu proyecto de energía solar."
+            return "He recibido la información de su factura. Por favor, cuéntame más sobre tu proyecto de energía solar."
         
         # return "Por favor, proporciona un mensaje o una imagen."
         # Procesar entrada de texto normal
