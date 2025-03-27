@@ -5,12 +5,16 @@ from PIL import Image
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
+
+st.title("Bienvenido a EnergIA  🌞.🤖.⚡.🏠")
+st.caption("Chatbot relacionado con la energía solar y su uso urbano")
+
+
 # Inicializar el agente si no existe
 if 'agent' not in st.session_state:
     st.session_state.agent = LangraphAgent(cc="123456")
     st.session_state.messages = []
 
-st.title("Consultor de Energía Solar")
 
 # Mostrar historial de mensajes
 for message in st.session_state.messages:
@@ -49,10 +53,8 @@ if uploaded_file:
     with st.chat_message("assistant"):
         st.write(response)
     st.session_state.messages.append({"role": "assistant", "content": response})
-        
-
-    
-
+  
+  
 if user_input:
     # Mostrar mensaje del usuario
     with st.chat_message("user"):

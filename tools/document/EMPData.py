@@ -44,9 +44,26 @@ class Util:
             return Util.months[mname.upper()]
         else:
             return None
-    
+        
+    @staticmethod
+    def extract_data(data:str, sep:str = " ", pos:int=0)->str:
+        """
+        Extracts a specific part of a string by splitting it using a given separator.
 
+        Args:
+            data (str): The input string to be processed.
+            sep (str, optional): The separator used to split the string. Defaults to a single space (" ").
+            pos (int, optional): The zero-based index of the part to extract after splitting. Defaults to 0.
 
+        Returns:
+            str: The extracted part of the string, stripped of leading and trailing whitespace.
+                    Returns None if the specified index is out of range.
+        """
+        try:
+            return data.split(sep)[pos].strip()
+        except IndexError:
+            return None
+        
 class User:
     """
     A class used to represent a User.
@@ -191,21 +208,49 @@ class Consumption:
 
     def __str__(self):
         return f"Consumption(fecha={self.fecha}, valor={self.valor})"
-    
+
+class GeneralInfo:
+    """
+    Represents general information about detection and recognition percentages.
+    Attributes:
+        deteccion_escritura_manual (str): Indicates manual text detection information.
+        poncentaje_rec_usuario (str): Percentage of recognition related to the user.
+        poncentaje_rec_info (str): Percentage of recognition related to information.
+        poncentaje_rec_consumos (str): Percentage of recognition related to consumptions.
+    Methods:
+    """
+    def __init__(self, pru:str, pri:str, prc:str, txtm:str):
+        """
+        Initializes an instance of the GeneralInfo class.
+        Args:
+            pru (str): Percentage of recognition for the user.
+            pri (str): Percentage of recognition for the information.
+            prc (str): Percentage of recognition for the consumptions.
+            txtm (str): Manual writing detection text.
+        """
+        self.deteccion_escritura_manual = txtm
+        self.poncentaje_rec_usuario = pru
+        self.poncentaje_rec_info = pri
+        self.poncentaje_rec_consumos = prc
+
 class EmpWrap:
     """
-    A wrapper class for user-related data.
+    A wrapper class for user-related data, encapsulating general information, user details, 
+    energy consumption information, and energy consumption history.
     Attributes:
-        usr (User): The user associated with the bill.
+        general (GeneralInfo): General information about of the result of field extraction.
+        usr (User): User-specific details of the user energy subscription.
         info (EnergyConsumptionInfo): Information about the user's energy consumption.
-        consumos (EnergyConsumptionHistory): The history of the employee's energy consumption.
+        consumos (EnergyConsumptionHistory): Historical data of the user's energy consumption.
     Methods:
-        __to_json__(): Converts the EmpWrap instance to a JSON string.
+        __to_json__(): Converts the EmpWrap object into a JSON-formatted string.
     """
-    def __init__(self, usr:User, info:EnergyConsumptionInfo, consumos:EnergyConsumptionHistory):
+
+    def __init__(self, general:GeneralInfo , usr:User, info:EnergyConsumptionInfo, consumos:EnergyConsumptionHistory):
+        self.general = general
         self.usr = usr
         self.info = info
-        self.consumos = consumos
+        self.consumos_hist = consumos
 
     def __to_json__(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)

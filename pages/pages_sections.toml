@@ -1,0 +1,14 @@
+[[pages]]
+path = "pages/chat_interface.py"
+name = "Chat"
+icon = "💬"
+
+[[pages]]
+path = "pages/disclaimer.py"
+name = "Aviso Legal"
+icon = "⚖️"
+
+[[pages]]
+path = "pages/about.py"
+name = "Acerca de:"
+icon = "ℹ️"

@@ -1,9 +1,8 @@
 # import libraries
-import os
 import pickle
 import re
 from datetime import datetime
-from .EMPData import User, EnergyConsumptionInfo, EnergyConsumptionHistory, Consumption, Util, EmpWrap
+from .EMPData import User, EnergyConsumptionInfo, EnergyConsumptionHistory, Consumption, Util, EmpWrap, GeneralInfo
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult
@@ -88,7 +87,9 @@ class BillAnalyzer:
         result: AnalyzeResult = poller.result()
 
         if save_result:
-            with open('dato.pkl', 'wb') as file:
+            now = datetime.now()
+            posfix = now.strftime("%Y%m%d%H%M%S")
+            with open(f'data_{posfix}.pkl', 'wb') as file:
                 pickle.dump(result, file)
 
         return result 
@@ -114,24 +115,26 @@ class BillAnalyzer:
         result: AnalyzeResult = poller.result()
 
         if save_result:
-            with open('dato.pkl', 'wb') as file:
+            now = datetime.now()
+            posfix = now.strftime("%Y%m%d%H%M%S")
+            with open(f'data_{posfix}.pkl', 'wb') as file:
                 pickle.dump(result, file)
 
         return result 
 
-    def get_result_layout_dummy(self):
+    def get_result_layout_dummy(self, posfix:str)->AnalyzeResult:
         """
-        Reads a pickle file named 'dato.pkl' and returns its content.
+        Reads a pickle file named 'dato_%Y%m%d%H%M%S.pkl' and returns its content.
         Returns:
             Any: The content of the 'dato.pkl' file.
         """
         result = None
-        with open('dato.pkl', 'rb') as archivo:
-            result = pickle.load(archivo)
-
+        #print(f'data_{posfix}.pkl')
+        with open(f'data_{posfix}.pkl', 'rb') as file:
+            result = pickle.load(file)
         return result
     
-    # TODO: Implement validatios for unknown formats
+    
     def analyze_layout(self, result):
         """
         Analyzes the layout of a document and extracts relevant information from a energy bill.
@@ -147,63 +150,65 @@ class BillAnalyzer:
             This function assumes the presence of certain keywords and structures in the document to extract the information.
         """
         
-        if result.styles and any([style.is_handwritten for style in result.styles]):
-            print("Document contains handwritten content")
-        else:
-            print("Document does not contain handwritten content")
+        txtm = any([style.is_handwritten for style in result.styles])
 
-        if result.languages:
-            print(result.languages)
+        #if result.languages:
+        #    print(result.languages)
 
         user = User()
         consumption_info = EnergyConsumptionInfo()
         consumption_hist = EnergyConsumptionHistory()
 
         consumption_table = []
+        base_line = 103
 
-        for page in result.pages:
+        if result.pages:
+            for page in result.pages:
 
-            if page.lines:
+                if page.lines:
 
-                for line_idx, line in enumerate(page.lines):
+                    for line_idx, line in enumerate(page.lines):
 
-                    if  page.page_number == 1 and line_idx>=103 and line_idx<=130:
-                        consumption_table.append({"idx":line_idx, "content":line.content , "polygon":line.polygon})
+                        if  page.page_number == 1 and line_idx>=90 and "(kWh)" in line.content:
+                            base_line = line_idx+1
 
-                    #extraccion informacion general
-                    if "Dirección prestación servicio" in line.content:
+                        if  page.page_number == 1 and line_idx>=base_line and line_idx<=base_line+30:
+                            consumption_table.append({"idx":line_idx, "content":line.content , "polygon":line.polygon})
 
-                        data = line.content
-                        user.direccion_servicio = data[data.index(":")+1:data.index("Municipio")].strip()
-                        user.municipio_servicio = data[data.index("Municipio")+10:].strip()
+                        #extraccion informacion general
+                        if "Dirección prestación servicio" in line.content:
 
-                    if "Contrato" in line.content:
-                        data = line.content
-                        user.contrato = data.split(" ")[1].strip()
-                        
-                    if "Cliente:" in line.content:
-                        data = line.content
-                        user.nombre = data.split(":")[1].strip()       
+                            data = line.content
+                            user.direccion_servicio = data[data.index(":")+1:data.index("Municipio")].strip()
+                            user.municipio_servicio = data[data.index("Municipio")+10:].strip()
 
-                    if "CC/NIT:" in line.content:
-                        data = line.content
-                        user.id = data.split(":")[1].strip()                      
+                        if "Contrato" in line.content:
+                            data = line.content
+                            user.contrato =  Util.extract_data(data," ", 1)
+                            
+                        if "Cliente:" in line.content:
+                            data = line.content
+                            user.nombre = Util.extract_data(data,":", 1)
+                            
+                        if "CC/NIT:" in line.content:
+                            data = line.content
+                            user.id = Util.extract_data(data,":", 1)                     
 
-                    if "Estrato:" in line.content:
-                        data = line.content
-                        user.estrato = data.split(" ")[4].strip()
+                        if "Estrato:" in line.content:
+                            data = line.content
+                            user.estrato = Util.extract_data(data," ", 4)
 
-                    if "Dirección de cobro:" in line.content:
-                        data = line.content
-                        user.direccion_facturacion = data.split(":")[1].strip()
+                        if "Dirección de cobro:" in line.content:
+                            data = line.content
+                            user.direccion_facturacion = Util.extract_data(data,":", 1)
 
-                    if "Referente de pago:" in line.content:
-                        data = line.content
-                        consumption_info.referencia = data.split(":")[1].strip()
+                        if "Referente de pago:" in line.content:
+                            data = line.content
+                            consumption_info.referencia = Util.extract_data(data,":", 1)
 
-                    if "Producto:" in line.content and line_idx >= 300:
-                        data = line.content
-                        consumption_hist.producto = data.split(":")[1].strip()
+                        if "Producto:" in line.content and line_idx >= 100 and line_idx <= 135:
+                            data = line.content
+                            consumption_hist.producto = Util.extract_data(data,":", 1)
 
         #print(user)
         #print("----------------------------------------")
@@ -215,77 +220,111 @@ class BillAnalyzer:
             for table_idx, table in enumerate(result.tables):
                 if table_idx == 2:
                     for cell in table.cells:
-                        if cell.row_index == 0:
+                        if cell.row_index == 0 and cell.column_index == 0:
+                            if  cell.content == "Lectura actual Lectura anterior":
+                                base_index = 1
+                            else:
+                                base_index = 0
+                           
+                        if cell.row_index == base_index+0:
                             if cell.column_index == 2:
-                                consumption_info.constante = str(cell.content).split(" ")[1].strip()
-                                #consumption.constante = cell.content
-                        if cell.row_index == 1:
+                                consumption_info.constante = Util.extract_data(str(cell.content)," ", 1)
+                        if cell.row_index == base_index+1:
                             if cell.column_index == 1:
                                 consumption_info.consumo_unidades = cell.content
-                        if cell.row_index == 2:
+                        if cell.row_index == base_index+2:
                             if cell.column_index == 0:
-                                consumption_info.fecha = str(cell.content).split(" ")[1].strip()
+                                consumption_info.fecha = Util.extract_data(str(cell.content)," ", 1)
                             if cell.column_index == 1:
                                 consumption_info.consumo = cell.content
                             if cell.column_index == 2:
                                 consumption_info.costo_unidad = cell.content
                             if cell.column_index == 3:
                                 consumption_info.valor_total = cell.content
-                        if cell.row_index == 3:
+                        if cell.row_index == base_index+3:
                             if cell.column_index == 3:
                                 consumption_info.valor_subsidio = cell.content
-                        if cell.row_index == 5:
+                        if cell.row_index == base_index+5:
                             if cell.column_index == 3:
                                 consumption_info.valor_energia = cell.content
             
             #print(consumption_info)
             #print("----------------------------------------")
+
+        #print(consumption_table)
+        if len(consumption_table) > 0:
+
+            i_base = consumption_table[0]["idx"]
+
+            xd = [d for d in consumption_table if d["idx"]>=i_base and d["idx"]<=i_base+8]
+            pxd = sorted([e['polygon'][0] for e in xd])
+
+            x_values = []
+
+            for idp in pxd:
+                for dat in consumption_table:
+                    if dat['polygon'][0] == idp:
+                        x_values.append(dat['content']) 
+
+
+            #print("1--->",x_values)
+
+            yd = [d for d in consumption_table if re.match('[A-Z]{3}/[0-9]{2}.*',d["content"]) or
+                                                re.match('[A-Z]*/[0-9]{2}.*',d["content"]) or 
+                                                "actual" in d["content"].lower() or  
+                                                re.match('^prom$',d["content"].lower())]
+            pyd = sorted([e['polygon'][0] for e in yd])
         
-        xd = [d for d in consumption_table if d["idx"]>=103 and d["idx"]<=111]
-        pxd = sorted([e['polygon'][0] for e in xd])
-
-        x_values = []
-
-        for idp in pxd:
-            for dat in consumption_table:
-                if dat['polygon'][0] == idp:
-                    x_values.append(dat['content']) 
-
-        yd = [d for d in consumption_table if re.match('[A-Z]{3}/[0-9]{2}.*',d["content"]) or "actual" in d["content"].lower() or "prom" in d["content"].lower()]
-        pyd = sorted([e['polygon'][0] for e in yd])
-    
-
-        y_values = []
-        for idp in pyd:
-            for dat in consumption_table:
-                if dat['polygon'][0] == idp:
-                    y_values.append(dat['content']) 
-
-        for i,date in enumerate(y_values):
-
-            if re.match('[A-Z]{3}/[0-9]{2}.*',date):
-                dat = date.split("/")
-                date = str(Util.get_month_num(dat[0]))+"/"+dat[1]
-                date = datetime.strptime(date, '%m/%y').strftime('%m/%Y')
-                print(type(date))
-                desc = "consumo"
+            y_values = []
+            for idp in pyd:
+                for dat in consumption_table:
+                    if dat['polygon'][0] == idp:
+                        y_values.append(dat['content']) 
             
-            elif date.lower() == "actual" or date.lower() == "prom":
-                dat = consumption_info.fecha.split("-")
-                date = str(Util.get_month_num(dat[0]))+"/"+dat[1]
-                date = datetime.strptime(date, '%m/%y').strftime('%m/%Y')
-                if date.lower() == "actual":
-                    desc = "consumo"
-                elif date.lower() == "prom":
-                    desc = "promedio"
+            #print("2--->",y_values)
+            #print("2--->",y_values[:-2])
+            #print("2--->",y_values[-2:])
 
-            cons = Consumption(date,desc,x_values[i]) 
-            consumption_hist.set_consumo(cons)
-            print(cons)
+            for i,date in enumerate(y_values[:-2]):
+
+                if re.match('[A-Z]{3}/[0-9]{2}.*',date):
+                    dat = date.split("/")
+                    date = str(Util.get_month_num(dat[0]))+"/"+dat[1]
+                    date = datetime.strptime(date, '%m/%y').strftime('%m/%Y')
+                    desc = "consumo"
+
+                cons = Consumption(date, desc, x_values[i]) 
+                consumption_hist.set_consumo(cons)
+
+            for i,date in enumerate(y_values[-2:]):    
+                if date.lower() == "actual" or date.lower() == "prom":
+                    if date.lower() == "actual":
+                        desc = "consumo"
+                    elif date.lower() == "prom":
+                        desc = "promedio"
+                    dat = consumption_info.fecha.split("-")
+                    date = str(Util.get_month_num(dat[0]))+"/"+dat[1]
+                    date = datetime.strptime(date, '%m/%y').strftime('%m/%Y')
+
+                cons = Consumption(date,desc, x_values[-2+i]) 
+                consumption_hist.set_consumo(cons)
 
         #print("----------------------------------------")
         #print(consumption_hist)
 
-        warp = EmpWrap(user,consumption_info,consumption_hist)
+
+        print(user.__dict__.values())
+
+        pru = sum(1 for v in user.__dict__.values() if v is not None)
+        pru = pru/len(user.__dict__.values())*100 
+
+        pri = sum(1 for v in consumption_info.__dict__.values() if v is not None)
+        pri = pri/len(consumption_info.__dict__.values())*100 
+
+        prc = sum(1 for v in consumption_hist.__dict__.values() if v is not None and v != [])
+        prc = prc/len(consumption_hist.__dict__.values())*100 
+
+        gen_info = GeneralInfo(str(pru), str(pri), str(prc), txtm) 
+        warp = EmpWrap(gen_info,user,consumption_info,consumption_hist)
         return warp.__to_json__()
 
