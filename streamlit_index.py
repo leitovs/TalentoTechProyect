@@ -3,17 +3,14 @@ from st_pages import add_page_title, get_nav_from_toml
 
 # Asignar configuraciones generales
 st.set_page_config(layout="wide")
-#sections = st.sidebar.toggle("Sections", value=True, key="use_sections")
 
-#nav = get_nav_from_toml(
-#    "pages_sections.toml" if sections else "pages.toml"
-#)
+
 
 nav = get_nav_from_toml(
-    "./pages/pages_sections.toml"
+    "./pages/pages.toml"
 )
 
-#st.logo("logo.png")
+
 
 pg = st.navigation(nav)
 add_page_title(pg)

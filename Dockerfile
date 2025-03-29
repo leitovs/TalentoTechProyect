@@ -21,4 +21,4 @@ ENV STREAMLIT_SERVER_FILE_WATCHER_TYPE="auto"
 EXPOSE 8501
 
 # Comando para ejecutar la aplicación de Streamlit
-CMD ["streamlit", "run", "streamlit_interface.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.runOnSave=true", "browser.gatherUsageStats=false"]
+CMD ["streamlit", "run", "streamlit_index.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.runOnSave=true", "browser.gatherUsageStats=false"]
